@@ -1,0 +1,22 @@
+{
+	"inputConfig": {
+		"CAP_AID": "0xa0:0x00:0x00:0x00:0x62:0x03:0x01:0x0C:0x06:0x01",
+		"CAP_name": "Wallet",
+		"CAP_version": "1.0",
+		"debug": true,
+		"noverify": false,
+		"verbose": true,
+		"outputDir": "thecapfile",
+		"exportPath": ".;.\\package1",
+		"inputPackages": [{
+			"baseDir": " C:\Users\phille_local\eclipse-workspace\Wallet\bin\com\oracle\jcclassic\samples\wallet",
+			"PackageName": "com.oracle.jcclassic.samples.wallet",
+			"PackageAID": "0xa0:0x00:0x00:0x00:0x62:0x03:0x01:0x0C:0x06:0x01",
+			"public": true,
+			"JCA": true,
+			"EXP": true,
+			"exportmap": true,
+			"version": "1.0"
+		}]
+	}
+}
