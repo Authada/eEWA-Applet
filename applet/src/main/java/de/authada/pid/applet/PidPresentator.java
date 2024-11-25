@@ -78,7 +78,7 @@ public class PidPresentator {
             Base64Converter base64Converter = new Base64Converter();
 
             byte[] header = SdJwtVcCreator.createHeader(keyPair.getPublic(), foreignPublicKey, personalDataHolder.x5cCertificates, base64Converter);
-            byte[] body = SdJwtVcCreator.fromPersonalData(personalDataHolder, (ECPublicKey) ephemeralKeyPair.getPublic(), selector);
+            byte[] body = SdJwtVcCreator.fromPersonalData(personalDataHolder, (ECPublicKey) ephemeralKeyPair.getPublic(), selector, iat);
 
             byte[] base64Header = base64Converter.encodeToBase64UrlNoPadding(header);
             byte[] base64Body = base64Converter.encodeToBase64UrlNoPadding(body);

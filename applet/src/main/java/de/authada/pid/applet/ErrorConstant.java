@@ -32,6 +32,8 @@ public class ErrorConstant {
     static final short SW_HMAC_MISSING = 0x6323;
     static final short SW_FOREIGN_PUB_KEY_MISSING = 0x6324;
     static final short SW_CREDENTIAL_HANDLE_NOT_FOUND = 0x6325;
+    static final short SW_NO_KEY_ID = 0x6326;
+    static final short SW_NO_KEY_ID_FOUND = 0x6327;
 
     final static short SW_ILLEGAL_VALUE = 0x6410;
     final static short SW_ILLEGAL_VALUE2 = 0x6411;

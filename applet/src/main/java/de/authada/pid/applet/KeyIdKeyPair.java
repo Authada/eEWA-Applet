@@ -17,29 +17,29 @@
 package de.authada.pid.applet;
 
 import javacard.framework.JCSystem;
+import javacard.security.KeyPair;
 
-public class CredentialHandle {
-    final static short CREDENTIAL_HANDLE_LENGTH = 48;
-    private byte[] credentialHandleArray = null;
-
-    public CredentialHandle() {
-    }
-
-    public byte[] generateCredentialHandle() {
-        credentialHandleArray = new byte[CREDENTIAL_HANDLE_LENGTH];
-        Util.generateRandomId(credentialHandleArray);
-        return credentialHandleArray;
-    }
-
-    public byte[] getCredentialHandleArray() {
-        return credentialHandleArray;
-    }
+public class KeyIdKeyPair {
+    byte[] keyId = null;
+    KeyPair keyPair = null;
 
     public void cleanUp() {
         try {
             JCSystem.beginTransaction();
-            byte[] oldData = credentialHandleArray;
-            credentialHandleArray = null;
+            byte[] oldData = keyId;
+            keyId = null;
+            if (oldData != null) {
+                JCSystem.requestObjectDeletion();
+            }
+            JCSystem.commitTransaction();
+        } catch (Exception e) {
+            JCSystem.abortTransaction();
+        }
+
+        try {
+            JCSystem.beginTransaction();
+            KeyPair oldData = keyPair;
+            keyPair = null;
             if (oldData != null) {
                 JCSystem.requestObjectDeletion();
             }
@@ -48,4 +48,5 @@ public class CredentialHandle {
             JCSystem.abortTransaction();
         }
     }
+
 }

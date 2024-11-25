@@ -42,6 +42,7 @@ public class PersonalDataHolder {
     byte[] placeOfBirthFreeTextPlace = null;
     byte[] alsoKnownAs = null;//optional
 
+    byte[] keyId = null;
     CredentialHandle credentialHandle = null;
 
     public byte[] createCredentialHandle() {

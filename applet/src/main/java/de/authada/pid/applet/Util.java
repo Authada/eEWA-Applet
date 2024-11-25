@@ -16,6 +16,8 @@
 
 package de.authada.pid.applet;
 
+import javacard.security.RandomData;
+
 public class Util {
     static short next(short offset) {
         return (short) (offset + 2);
@@ -23,5 +25,10 @@ public class Util {
 
     static short lengthCreator(byte[] inputData, short offset) {
         return javacard.framework.Util.makeShort(inputData[offset], inputData[(short) (offset + 1)]);
+    }
+
+    static void generateRandomId(byte[] id) {
+        RandomData random = RandomData.getInstance(RandomData.ALG_KEYGENERATION);
+        random.nextBytes(id, (short) 0, ((short) id.length));
     }
 }

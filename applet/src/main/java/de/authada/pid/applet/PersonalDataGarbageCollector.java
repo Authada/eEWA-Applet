@@ -261,5 +261,17 @@ public class PersonalDataGarbageCollector {
         }
 
         personalDataHolder.credentialHandle.cleanUp();
+
+        try {
+            JCSystem.beginTransaction();
+            byte[] oldData = personalDataHolder.keyId;
+            personalDataHolder.keyId = null;
+            if (oldData != null) {
+                JCSystem.requestObjectDeletion();
+            }
+            JCSystem.commitTransaction();
+        } catch (Exception e) {
+            JCSystem.abortTransaction();
+        }
     }
 }

@@ -16,6 +16,8 @@
 
 package de.authada.pid.applet;
 
+import static de.authada.pid.applet.Util.lengthCreator;
+
 import javacard.framework.*;
 import javacard.security.ECPrivateKey;
 import javacard.security.ECPublicKey;
@@ -30,23 +32,30 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
     // instruction bytes
     final static byte VERIFY = (byte) 0x20;
     final static byte CLEAN_TRANSIENT = (byte) 0x35;
-    final static byte CREATE_DEVICE_KEYS_AND_NONCE = (byte) 0x39;
+    final static byte CREATE_KEY_PAIR = (byte) 0x36;
+    final static byte WALLET_ATTESTATION = (byte) 0x39;
     final static byte STORE_PERSONAL_DATA = (byte) 0x42;
     final static byte CREATE_PID = (byte) 0x43;
     final static byte GET_PERSONAL_DATA = (byte) 0x44;
     final static byte GET_AUTHENTICATION_PUBLIC_KEY = (byte) 0x45;
-    final static byte GET_DEVICE_PUBLIC_KEY = (byte) 0x46;
     final static byte INIT_UPDATE = (byte) 0x50;
     final static byte SET_PIN = (byte) 0x51;
+    final static byte GET_PUBLIC_KEY = (byte) 0x52;
+    final static byte DELETE_KEY_ID = (byte) 0x53;
     final static byte CLEAN_UP = (byte) 0x71;
-    static final byte CREATE_SIGNATURE_WITH_DEV_KEY = 0x72;
     static final byte HAS_PIN = 0x73;
+    static final byte CREATE_SIGNATURE_WITH_KEY = 0x74;
+    static final byte CREATE_SIGNATURE_WITH_KEY_SINGLE = 0x75;
     final static byte EXT_AUTHENTICATE = (byte) 0x82;
     // maximum number of incorrect tries before the
     // PIN is blocked
     final static byte PIN_TRY_LIMIT = (byte) 0x03;
     // maximum size PIN
     final static byte MAX_PIN_SIZE = (byte) 0x06;
+
+    public static byte[] keyIdTag = {(byte) 0xD0, (byte) 0x01};
+    public static byte[] signatureDataTag = {(byte) 0xD0, (byte) 0x02};
+    public static byte[] nonceTag = {(byte) 0xD0, (byte) 0x03};
 
     final static short MAX_NON_EL_DATA_SIZE = 256;
 
@@ -56,7 +65,8 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
     private final CSP csp;
 
     private final PidIssuer pidIssuer;
-    private KeyPair deviceKeys;
+
+    private final Object[] keyIdKeyPairArray;
 
     private SecureChannel secCh = null;
 
@@ -66,6 +76,7 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         csp = new CSP();
         authenticationKeys = SecP256r1.newKeyPair(true);
         pidIssuer = new PidIssuer(csp);
+        keyIdKeyPairArray = new Object[100];
         register();
     }
 
@@ -104,11 +115,17 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
             case VERIFY:
                 verify(apdu);
                 return;
-            case CREATE_DEVICE_KEYS_AND_NONCE:
-                createDeviceKeysAndProcessNonce(apdu);
+            case CREATE_KEY_PAIR:
+                createKeyPair(apdu);
                 return;
-            case CREATE_SIGNATURE_WITH_DEV_KEY:
-                createSignatureWithDeviceKey(apdu);
+            case WALLET_ATTESTATION:
+                walletAttestation(apdu);
+                return;
+            case CREATE_SIGNATURE_WITH_KEY:
+                createSignatureWithKey(apdu);
+                return;
+            case CREATE_SIGNATURE_WITH_KEY_SINGLE:
+                createSignatureWithKeySingle(apdu);
                 return;
             case CLEAN_TRANSIENT:
                 requestObjectDeletion();
@@ -116,8 +133,11 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
             case GET_AUTHENTICATION_PUBLIC_KEY:
                 getAuthenticationPublicKey(apdu);
                 return;
-            case GET_DEVICE_PUBLIC_KEY:
-                getDevicePublicKey(apdu);
+            case GET_PUBLIC_KEY:
+                getPublicKey(apdu);
+                return;
+            case DELETE_KEY_ID:
+                deleteKeyId(apdu);
                 return;
             case SET_PIN:
                 setPin(apdu);
@@ -155,37 +175,81 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         }
     }
 
+
     private void cleanUp(APDU apdu) {
         byte[] buffer = apdu.getBuffer();
         short recv = apdu.setIncomingAndReceive();
-        cleanUpDeviceKeys();
         cleanUpPersonalDataHolder();
     }
 
+
     private void createPid(APDU apdu) {
-        checkForDeviceKeysSet();
         checkForPersonalData();
+        if (personalDataHolder.keyId == null) {
+            ISOException.throwIt(ErrorConstant.SW_NO_KEY_ID);
+        }
 
         byte[] body = receiveData(apdu);
-        byte[] pid = PidPresentator.create(body, personalDataHolder, deviceKeys);
+
+        KeyIdKeyPair keyIdKeyPair = getKeyIdKeyPair(personalDataHolder.keyId);
+        byte[] pid = PidPresentator.create(body, personalDataHolder, keyIdKeyPair.keyPair);
 
         short le = apdu.setOutgoing();
         apdu.setOutgoingLength((short) pid.length);
         apdu.sendBytesLong(pid, (short) 0, (short) pid.length);
     }
 
-    private void storePersonalData(APDU apdu) {
-        checkForDeviceKeysSet();
+    private short getIndexOfKeyIdKeyPair(byte[] keyId) {
+        short index = -1;
+        for (short i = 0; i < keyIdKeyPairArray.length; i++) {
+            if (keyIdKeyPairArray[i] != null && ArraySimplifier.compareOne(((KeyIdKeyPair) keyIdKeyPairArray[i]).keyId, keyId)) {
+                index = i;
+                break;
+            }
+        }
 
+        if (index == -1) {
+            ISOException.throwIt(ErrorConstant.SW_NO_KEY_ID_FOUND);
+        }
+
+        return index;
+    }
+
+    private KeyIdKeyPair getKeyIdKeyPair(byte[] keyId) {
+        short index = getIndexOfKeyIdKeyPair(keyId);
+        return ((KeyIdKeyPair) keyIdKeyPairArray[index]);
+    }
+
+    private void storePersonalData(APDU apdu) {
         byte[] body = receiveData(apdu);
 
-        personalDataHolder = pidIssuer.verifyAuthenticatedChannelAndCreatePersonalData((ECPrivateKey) deviceKeys.getPrivate(), body);
+        short offset = 0;
+        if (ArraySimplifier.tagCompareOne(body, offset, keyIdTag)) {
+            offset = Util.next(offset);
+            short lengthOfKeyId = lengthCreator(body, offset);
+            offset = Util.next(offset);
+            byte[] keyId = TransientByteArraySimplifier.one(lengthOfKeyId);
+            offset += ArraySimplifier.one(body, offset, keyId, (short) 0, lengthOfKeyId);
 
-        byte[] credentialHandle = personalDataHolder.createCredentialHandle();
+            KeyIdKeyPair keyIdKeyPair = getKeyIdKeyPair(keyId);
 
-        short le = apdu.setOutgoing();
-        apdu.setOutgoingLength((short) credentialHandle.length);
-        apdu.sendBytesLong(credentialHandle, (short) 0, (short) credentialHandle.length);
+            //there can only be one set of PID data, so cleanup to prevent having data leftovers
+            cleanUpPersonalDataHolder();
+            personalDataHolder = pidIssuer.verifyAuthenticatedChannelAndCreatePersonalData(
+                    (ECPrivateKey) keyIdKeyPair.keyPair.getPrivate(),
+                    body,
+                    offset
+            );
+
+            byte[] credentialHandle = personalDataHolder.createCredentialHandle();
+            personalDataHolder.keyId = keyIdKeyPair.keyId;
+
+            short le = apdu.setOutgoing();
+            apdu.setOutgoingLength((short) credentialHandle.length);
+            apdu.sendBytesLong(credentialHandle, (short) 0, (short) credentialHandle.length);
+        } else {
+            ISOException.throwIt(ErrorConstant.SW_NO_KEY_ID);
+        }
     }
 
     private void getPersonalData(APDU apdu) {
@@ -199,28 +263,104 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         apdu.sendBytesLong(personalData, (short) 0, (short) personalData.length);
     }
 
-    private void createDeviceKeysAndProcessNonce(APDU apdu) {
+
+    private void createKeyPair(APDU apdu) {
         byte[] buffer = apdu.getBuffer();
-        short recv = apdu.setIncomingAndReceive();
 
-        if (deviceKeys != null) {
-            cleanUpDeviceKeys();
+        KeyIdKeyPair item = new KeyIdKeyPair();
+        item.keyPair = SecP256r1.newKeyPair(false);
+
+        item.keyId = new byte[48];
+        Util.generateRandomId(item.keyId);
+
+        for (short i = 0; i < keyIdKeyPairArray.length; i++) {
+            if (keyIdKeyPairArray[i] == null) {
+                keyIdKeyPairArray[i] = item;
+                break;
+            }
         }
-        deviceKeys = SecP256r1.newKeyPair(false);
 
-        byte[] nonce = TransientByteArraySimplifier.one(recv);
-
-        ArraySimplifier.one(buffer, ISO7816.OFFSET_CDATA, nonce, (short) 0, recv);
-
-        byte[] response = pidIssuer.createDeviceKeysAndProcessNonce(nonce, deviceKeys, authenticationKeys);
-
-        apdu.setOutgoing();
-        apdu.setOutgoingLength(((short) response.length));
-        apdu.sendBytesLong(response, (short) 0, ((short) response.length));
+        short le = apdu.setOutgoing();
+        apdu.setOutgoingLength((short) item.keyId.length);
+        apdu.sendBytesLong(item.keyId, (short) 0, (short) item.keyId.length);
     }
 
-    private void createSignatureWithDeviceKey(APDU apdu) {
-        byte[] transientBuffer = receiveData(apdu);
+
+    private void walletAttestation(APDU apdu) {
+        byte[] buffer = receiveData(apdu);
+
+        short offset = 0;
+        if (ArraySimplifier.tagCompareOne(buffer, offset, keyIdTag)) {
+            offset = Util.next(offset);
+            short lengthOfKeyId = lengthCreator(buffer, offset);
+            offset = Util.next(offset);
+            byte[] keyId = TransientByteArraySimplifier.one(lengthOfKeyId);
+            offset += ArraySimplifier.one(buffer, offset, keyId, (short) 0, lengthOfKeyId);
+
+            KeyIdKeyPair keyIdKeyPair = getKeyIdKeyPair(keyId);
+
+            if (ArraySimplifier.tagCompareOne(buffer, offset, nonceTag)) {
+                offset = Util.next(offset);
+                short lengthOfNonce = lengthCreator(buffer, offset);
+                offset = Util.next(offset);
+                byte[] nonce = TransientByteArraySimplifier.one(lengthOfNonce);
+                offset += ArraySimplifier.one(buffer, offset, nonce, (short)0, lengthOfNonce);
+
+                byte[] response = pidIssuer.createDeviceKeysAndProcessNonce(nonce, keyIdKeyPair.keyPair, authenticationKeys);
+
+                apdu.setOutgoing();
+                apdu.setOutgoingLength(((short) response.length));
+                apdu.sendBytesLong(response, (short) 0, ((short) response.length));
+            } else {
+                ISOException.throwIt(ErrorConstant.SW_ARRAY4);
+            }
+        } else {
+            ISOException.throwIt(ErrorConstant.SW_NO_KEY_ID);
+        }
+    }
+
+
+    private byte[] getDataToSignFromInputWithTags(byte[] input) {
+        short offset = Util.next((short)0);
+        short lengthOfKeyId = lengthCreator(input, offset);
+        offset = Util.next(offset);
+        byte[] keyId = TransientByteArraySimplifier.one(lengthOfKeyId);
+        offset += ArraySimplifier.one(input, offset, keyId, (short) 0, lengthOfKeyId);
+
+        KeyIdKeyPair keyIdKeyPair = getKeyIdKeyPair(keyId);
+        initSignatureInstance(keyIdKeyPair.keyPair);
+
+        if (ArraySimplifier.tagCompareOne(input, offset, signatureDataTag)) {
+            offset = Util.next(offset);
+            short lengthOfDataToSign = lengthCreator(input, offset);
+            offset = Util.next(offset);
+            byte[] dataToSign = TransientByteArraySimplifier.one(lengthOfDataToSign);
+            ArraySimplifier.one(input, offset, dataToSign, (short)0, lengthOfDataToSign);
+
+            return dataToSign;
+        } else {
+            ISOException.throwIt(ErrorConstant.SW_ARRAY4);
+        }
+
+        return null;
+    }
+
+    private void createSignatureWithKeySingle(APDU apdu) {
+        byte[] body = receiveData(apdu);
+
+        if (ArraySimplifier.tagCompareOne(body, (short)0, keyIdTag)) {
+            byte[] signature = SignatureSimplifier.oneComputeSignature(getDataToSignFromInputWithTags(body));
+
+            apdu.setOutgoing();
+            apdu.setOutgoingLength((short) signature.length);
+            apdu.sendBytesLong(signature, (short) 0, (short) signature.length);
+        } else {
+            ISOException.throwIt(ErrorConstant.SW_NO_KEY_ID);
+        }
+    }
+
+    private void createSignatureWithKey(APDU apdu) {
+        byte[] body = receiveData(apdu);
 
         //Special handling for older Secure Elements and eSIM: Input data size from EL APDUs is
         //seemingly limited to something around 4000 Bytes, so chaining got implemented. Currently,
@@ -228,21 +368,19 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         //chaining treatment as other functions did not show the need to do so.
 
         if (apdu.isCommandChainingCLA()) {
-            initSignatureInstance();
-            SignatureSimplifier.oneUpdateSignature(transientBuffer);
+            if (ArraySimplifier.tagCompareOne(body, (short)0, keyIdTag)) {
+                SignatureSimplifier.oneUpdateSignature(getDataToSignFromInputWithTags(body));
+            } else {
+                SignatureSimplifier.oneUpdateSignature(body);
+            }
         } else {
-
-            //in case only one command is send for generating a signature and no command chain
-            initSignatureInstance();
-
-            byte[] signature = SignatureSimplifier.oneComputeSignature(transientBuffer);
+            byte[] signature = SignatureSimplifier.oneComputeSignature(body);
 
             apdu.setOutgoing();
             apdu.setOutgoingLength((short) signature.length);
             apdu.sendBytesLong(signature, (short) 0, (short) signature.length);
         }
     }
-
 
     private void setPin(APDU apdu) {
         apdu.setIncomingAndReceive();
@@ -295,34 +433,52 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         apdu.sendBytesLong(buffer, ISO7816.OFFSET_CDATA, lengthOfW);
     }
 
-    private void getDevicePublicKey(APDU apdu) {
+    private void getPublicKey(APDU apdu) {
         checkForPinSetAndValidated();
-        checkForDeviceKeysSet();
+
+        byte[] keyId = getKeyIdFromApdu(apdu);
+        KeyIdKeyPair keyIdKeyPair = getKeyIdKeyPair(keyId);
 
         byte[] buffer = apdu.getBuffer();
-        short lengthOfW = PublicKeySimplifier.one((ECPublicKey) deviceKeys.getPublic(), buffer, ISO7816.OFFSET_CDATA);
+        short lengthOfW = PublicKeySimplifier.one((ECPublicKey) keyIdKeyPair.keyPair.getPublic(), buffer, ISO7816.OFFSET_CDATA);
 
         apdu.setOutgoing();
         apdu.setOutgoingLength(lengthOfW);
         apdu.sendBytesLong(buffer, ISO7816.OFFSET_CDATA, lengthOfW);
     }
 
-    private void cleanUpDeviceKeys() {
-        try {
-            JCSystem.beginTransaction();
-            KeyPair oldKeys = deviceKeys;
-            deviceKeys = null;
-            if (oldKeys != null) {
-                JCSystem.requestObjectDeletion();
-            }
-            JCSystem.commitTransaction();
-        } catch (Exception e) {
-            JCSystem.abortTransaction();
+    private void deleteKeyId(APDU apdu) {
+        byte[] keyId = getKeyIdFromApdu(apdu);
+
+        short index = getIndexOfKeyIdKeyPair(keyId);
+
+        deleteKeyIdKeyPairFromArray(index);
+    }
+
+    private void deleteKeyIdKeyPairFromArray(short index) {
+        if (keyIdKeyPairArray[index] != null) {
+            ((KeyIdKeyPair) keyIdKeyPairArray[index]).cleanUp();
+            keyIdKeyPairArray[index] = null;
         }
+    }
+
+    private byte[] getKeyIdFromApdu(APDU apdu) {
+        byte[] buffer = apdu.getBuffer();
+        short recv = apdu.setIncomingAndReceive();
+
+        byte[] keyId = TransientByteArraySimplifier.one(recv);
+
+        ArraySimplifier.one(buffer, ISO7816.OFFSET_CDATA, keyId, (short) 0, recv);
+        return keyId;
     }
 
     private void cleanUpPersonalDataHolder() {
         if (personalDataHolder != null) {
+            if (personalDataHolder.keyId != null) {
+                short index = getIndexOfKeyIdKeyPair(personalDataHolder.keyId);
+                deleteKeyIdKeyPairFromArray(index);
+            }
+
             PersonalDataGarbageCollector.cleanUp(personalDataHolder);
             try {
                 JCSystem.beginTransaction();
@@ -367,12 +523,6 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         return body;
     }
 
-    private void checkForDeviceKeysSet() {
-        if (deviceKeys == null) {
-            ISOException.throwIt(ErrorConstant.SW_NO_DEVICE_KEY);
-        }
-    }
-
     private void checkForPersonalData() {
         if (personalDataHolder == null) {
             ISOException.throwIt(ErrorConstant.SW_NO_DATA_STORED);
@@ -389,9 +539,8 @@ public class Pid extends Applet implements Personalization, ExtendedLength {
         }
     }
 
-    private void initSignatureInstance() {
-        checkForDeviceKeysSet();
-        SignatureSimplifier.createAndInitSignatureInstance(deviceKeys.getPrivate());
+    private void initSignatureInstance(KeyPair keyPair) {
+        SignatureSimplifier.createAndInitSignatureInstance(keyPair.getPrivate());
     }
 
     @Override

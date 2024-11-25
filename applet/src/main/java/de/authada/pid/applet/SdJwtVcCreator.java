@@ -26,109 +26,118 @@ import static de.authada.pid.applet.Util.next;
 
 public class SdJwtVcCreator {
 
-    private static short personaLDataLengthCreator(PersonalDataHolder personalDataHolder, byte[] selector) {
+    private static short personalDataLengthCreator(PersonalDataHolder personalDataHolder, byte[] selector, byte[] iat) {
         short selectorOffset = 0;
 
         short lengthOfResponse = (short) (begin.length + cnfJwkPrefix.length + yPrefix.length + end.length);
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, givenName)) {
+        if (personalDataHolder.dateOfExpiry != null) {
+            lengthOfResponse = (short) (lengthOfResponse + expPrefix.length + personalDataHolder.dateOfExpiry.length + comma.length);
+        }
+
+        if (iat != null) {
+            lengthOfResponse = (short) (lengthOfResponse + iatPrefix.length + iat.length + comma.length);
+        }
+
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, givenName) && personalDataHolder.givenName != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(givenNamePrefix, personalDataHolder.givenName));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, familyName)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, familyName) && personalDataHolder.familyName != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(familyNamePrefix, personalDataHolder.familyName));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, birthDate)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, birthDate) && personalDataHolder.birthDate != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(birthDatePrefix, personalDataHolder.birthDate));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, sourceDocumentType)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, sourceDocumentType) && personalDataHolder.sourceDocumentType != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(sourceDocumentTypePrefix, personalDataHolder.sourceDocumentType));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, dateOfExpiry)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, dateOfExpiry) && personalDataHolder.dateOfExpiry != null) {
             selectorOffset = next(selectorOffset);
-            lengthOfResponse = (short) (lengthOfResponse + addLengthItem(dateOfExpiryPrefix, personalDataHolder.dateOfExpiry));
+            lengthOfResponse = (short) (lengthOfResponse + dateOfExpiryPrefix.length + personalDataHolder.dateOfExpiry.length + comma.length);
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, academicTitle)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, academicTitle) && personalDataHolder.academicTitle != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(academicTitlePrefix, personalDataHolder.academicTitle));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, streetAddress)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, streetAddress) && personalDataHolder.streetAddress != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(addressStreetPrefix, personalDataHolder.streetAddress));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, locality)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, locality) && personalDataHolder.locality != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(localityPrefix, personalDataHolder.locality));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, postalCode)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, postalCode) && personalDataHolder.postalCode != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(postalCodePrefix, personalDataHolder.postalCode));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, country)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, country) && personalDataHolder.country != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(countryPrefix, personalDataHolder.country));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, noPlaceInfo)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, noPlaceInfo) && personalDataHolder.noPlaceInfo != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(noPlaceInfoPrefix, personalDataHolder.noPlaceInfo));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, freeTextPlace)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, freeTextPlace) && personalDataHolder.freeTextPlace != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(freeTextPlacePrefix, personalDataHolder.freeTextPlace));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, nationality)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, nationality) && personalDataHolder.nationality != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(nationalityPrefix, personalDataHolder.nationality));
+            lengthOfResponse++; //+ 1 because of array in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, birthFamilyName)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, birthFamilyName) && personalDataHolder.birthFamilyName != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(birthFamilyNamePrefix, personalDataHolder.birthFamilyName));
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthLocality)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthLocality) && personalDataHolder.placeOfBirthLocality != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(placeOfBirthLocalityPrefix, personalDataHolder.placeOfBirthLocality));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthCountry)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthCountry) && personalDataHolder.placeOfBirthCountry != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(pobCountryPrefix, personalDataHolder.placeOfBirthCountry));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthNoPlaceInfo)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthNoPlaceInfo) && personalDataHolder.placeOfBirthNoPlaceInfo != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(pobNoPlaceInfoPrefix, personalDataHolder.placeOfBirthNoPlaceInfo));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthFreeTextPlace)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthFreeTextPlace) && personalDataHolder.placeOfBirthFreeTextPlace != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(freeTextPlacePrefix, personalDataHolder.placeOfBirthFreeTextPlace));
             lengthOfResponse++;// + 1 because of encapsulation in json
         }
 
-        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, alsoKnownAs)) {
+        if (ArraySimplifier.tagCompareOne(selector, selectorOffset, alsoKnownAs) && personalDataHolder.alsoKnownAs != null) {
             selectorOffset = next(selectorOffset);
             lengthOfResponse = (short) (lengthOfResponse + addLengthItem(alsoKnownAsPrefix, personalDataHolder.alsoKnownAs));
         }
@@ -139,7 +148,7 @@ public class SdJwtVcCreator {
         return (short) (prefix.length + data.length + endOfCredential.length);
     }
 
-    public static byte[] fromPersonalData(PersonalDataHolder personalDataHolder, ECPublicKey ephemeralEcPublicKey, byte[] selector) {
+    public static byte[] fromPersonalData(PersonalDataHolder personalDataHolder, ECPublicKey ephemeralEcPublicKey, byte[] selector, byte[] iat) {
 
         Base64Converter base64Converter = new Base64Converter();
         byte[] publicKeyW = TransientByteArraySimplifier.one((short) 65);
@@ -159,7 +168,7 @@ public class SdJwtVcCreator {
         byte[] encodedy = base64Converter.encodeToBase64UrlNoPadding(publicKeyWy);
 
 
-        short lengthOfResponse = personaLDataLengthCreator(personalDataHolder, selector);
+        short lengthOfResponse = personalDataLengthCreator(personalDataHolder, selector, iat);
 
         lengthOfResponse += (short) (encodedX.length + encodedy.length);
 
@@ -168,100 +177,120 @@ public class SdJwtVcCreator {
         short offset = 0;
 
         offset = ArraySimplifier.one(begin, (short) 0, transientJWT, offset, (short) begin.length);
+
+        //exp
+        if (personalDataHolder.dateOfExpiry != null) {
+            offset = addItem(expPrefix, personalDataHolder.dateOfExpiry, offset, transientJWT, comma);
+        }
+
+        if (iat != null) {
+            offset = addItem(iatPrefix, iat, offset, transientJWT, comma);
+        }
+
         short selectorOffset = 0;
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, givenName) && personalDataHolder.givenName != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(givenNamePrefix, personalDataHolder.givenName, offset, transientJWT);
+            offset = addItem(givenNamePrefix, personalDataHolder.givenName, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, familyName) && personalDataHolder.familyName != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(familyNamePrefix, personalDataHolder.familyName, offset, transientJWT);
+            offset = addItem(familyNamePrefix, personalDataHolder.familyName, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, birthDate) && personalDataHolder.birthDate != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(birthDatePrefix, personalDataHolder.birthDate, offset, transientJWT);
+            offset = addItem(birthDatePrefix, personalDataHolder.birthDate, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, sourceDocumentType) && personalDataHolder.sourceDocumentType != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(sourceDocumentTypePrefix, personalDataHolder.sourceDocumentType, offset, transientJWT);
+            offset = addItem(sourceDocumentTypePrefix, personalDataHolder.sourceDocumentType, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, dateOfExpiry) && personalDataHolder.dateOfExpiry != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(dateOfExpiryPrefix, personalDataHolder.dateOfExpiry, offset, transientJWT);
+            offset = addItem(dateOfExpiryPrefix, personalDataHolder.dateOfExpiry, offset, transientJWT, comma);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, academicTitle) && personalDataHolder.academicTitle != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(academicTitlePrefix, personalDataHolder.academicTitle, offset, transientJWT);
+            offset = addItem(academicTitlePrefix, personalDataHolder.academicTitle, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, streetAddress) && personalDataHolder.streetAddress != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(addressStreetPrefix, personalDataHolder.streetAddress, offset, transientJWT);
+            offset = addItem(addressStreetPrefix, personalDataHolder.streetAddress, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, locality) && personalDataHolder.locality != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(localityPrefix, personalDataHolder.locality, offset, transientJWT);
+            offset = addItem(localityPrefix, personalDataHolder.locality, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, postalCode) && personalDataHolder.postalCode != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(postalCodePrefix, personalDataHolder.postalCode, offset, transientJWT);
+            offset = addItem(postalCodePrefix, personalDataHolder.postalCode, offset, transientJWT, endOfCredential);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, country) && personalDataHolder.country != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(countryPrefix, personalDataHolder.country, offset, transientJWT);
+            offset = addItem(countryPrefix, personalDataHolder.country, offset, transientJWT, encapsulatedJsonEnd);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, noPlaceInfo) && personalDataHolder.noPlaceInfo != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(noPlaceInfoPrefix, personalDataHolder.noPlaceInfo, offset, transientJWT);
+            offset = addItem(noPlaceInfoPrefix, personalDataHolder.noPlaceInfo, offset, transientJWT, encapsulatedJsonEnd);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, freeTextPlace) && personalDataHolder.freeTextPlace != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(freeTextPlacePrefix, personalDataHolder.freeTextPlace, offset, transientJWT);
+            offset = addItem(freeTextPlacePrefix, personalDataHolder.freeTextPlace, offset, transientJWT, encapsulatedJsonEnd);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, nationality) && personalDataHolder.nationality != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(nationalityPrefix, personalDataHolder.nationality, offset, transientJWT);
+            offset = addItem(nationalityPrefix, personalDataHolder.nationality, offset, transientJWT, arrayItemEnd);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, birthFamilyName) && personalDataHolder.birthFamilyName != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(birthFamilyNamePrefix, personalDataHolder.birthFamilyName, offset, transientJWT);
+            offset = addItem(birthFamilyNamePrefix, personalDataHolder.birthFamilyName, offset, transientJWT, endOfCredential);
         }
 
+        boolean placeOfBirthAskedAndThere = false;
+        boolean hasMoreThanPoBLocality = false;
+
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthLocality) && personalDataHolder.placeOfBirthLocality != null) {
+            placeOfBirthAskedAndThere = true;
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(placeOfBirthLocalityPrefix, personalDataHolder.placeOfBirthLocality, offset, transientJWT);
+            offset = addItem(placeOfBirthLocalityPrefix, personalDataHolder.placeOfBirthLocality, offset, transientJWT, endOfCredentialWithoutComma);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthCountry) && personalDataHolder.placeOfBirthCountry != null) {
+            placeOfBirthAskedAndThere = true;
+            hasMoreThanPoBLocality = true;
+            offset = ArraySimplifier.three(comma, (short) 0, transientJWT, offset, (short) comma.length);
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(pobCountryPrefix, personalDataHolder.placeOfBirthCountry, offset, transientJWT);
+            offset = addItem(pobCountryPrefix, personalDataHolder.placeOfBirthCountry, offset, transientJWT, encapsulatedJsonEnd);
+        }
+        if (placeOfBirthAskedAndThere && !hasMoreThanPoBLocality) {
+            offset = ArraySimplifier.three(encapsulatedJsonEnd2, (short) 0, transientJWT, offset, (short) encapsulatedJsonEnd2.length);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthNoPlaceInfo) && personalDataHolder.placeOfBirthNoPlaceInfo != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(pobNoPlaceInfoPrefix, personalDataHolder.placeOfBirthNoPlaceInfo, offset, transientJWT);
+            offset = addItem(pobNoPlaceInfoPrefix, personalDataHolder.placeOfBirthNoPlaceInfo, offset, transientJWT, encapsulatedJsonEnd);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, placeOfBirthFreeTextPlace) && personalDataHolder.placeOfBirthFreeTextPlace != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItemEncapsulatedEnd(freeTextPlacePrefix, personalDataHolder.placeOfBirthFreeTextPlace, offset, transientJWT);
+            offset = addItem(freeTextPlacePrefix, personalDataHolder.placeOfBirthFreeTextPlace, offset, transientJWT, encapsulatedJsonEnd);
         }
 
         if (ArraySimplifier.tagCompareOne(selector, selectorOffset, alsoKnownAs) && personalDataHolder.alsoKnownAs != null) {
             selectorOffset = next(selectorOffset);
-            offset = addItem(alsoKnownAsPrefix, personalDataHolder.alsoKnownAs, offset, transientJWT);
+            offset = addItem(alsoKnownAsPrefix, personalDataHolder.alsoKnownAs, offset, transientJWT, endOfCredential);
         }
 
         offset = ArraySimplifier.three(cnfJwkPrefix, (short) 0, transientJWT, offset, (short) cnfJwkPrefix.length);
@@ -273,17 +302,6 @@ public class SdJwtVcCreator {
         return transientJWT;
     }
 
-    private static short addItem(byte[] prefix, byte[] value, short offset, byte[] response) {
-        offset = ArraySimplifier.one(prefix, (short) 0, response, offset, (short) prefix.length);
-        offset = ArraySimplifier.two(value, (short) 0, response, offset, (short) value.length);
-        return ArraySimplifier.three(endOfCredential, (short) 0, response, offset, (short) endOfCredential.length);
-    }
-
-    private static short addItemEncapsulatedEnd(byte[] prefix, byte[] value, short offset, byte[] response) {
-        offset = ArraySimplifier.one(prefix, (short) 0, response, offset, (short) prefix.length);
-        offset = ArraySimplifier.two(value, (short) 0, response, offset, (short) value.length);
-        return ArraySimplifier.three(encapsulatedJsonEnd, (short) 0, response, offset, (short) encapsulatedJsonEnd.length);
-    }
 
     public static byte[] createHeader(PublicKey ecPublic, byte[] foreignPublicKey, Object[] x5cCertificates, Base64Converter base64Converter) {
         byte[] transientECPublicKey = TransientByteArraySimplifier.one((short) 65);
@@ -341,5 +359,12 @@ public class SdJwtVcCreator {
         offset = ArraySimplifier.one(headerEnd, (short) 0, header, offset, (short) headerEnd.length);
 
         return header;
+    }
+
+
+    private static short addItem(byte[] prefix, byte[] value, short offset, byte[] response, byte[] itemEnd) {
+        offset = ArraySimplifier.one(prefix, (short) 0, response, offset, (short) prefix.length);
+        offset = ArraySimplifier.two(value, (short) 0, response, offset, (short) value.length);
+        return ArraySimplifier.three(itemEnd, (short) 0, response, offset, (short) itemEnd.length);
     }
 }

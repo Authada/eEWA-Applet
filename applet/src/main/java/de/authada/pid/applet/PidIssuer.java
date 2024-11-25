@@ -64,8 +64,7 @@ public class PidIssuer {
         return response;
     }
 
-    protected PersonalDataHolder verifyAuthenticatedChannelAndCreatePersonalData(ECPrivateKey privateKey, byte[] sendData) {
-        short personalDataOffset = 0;
+    protected PersonalDataHolder verifyAuthenticatedChannelAndCreatePersonalData(ECPrivateKey privateKey, byte[] sendData, short personalDataOffset) {
         byte[] hmac = null;
         byte[] pubKey = null;
 
